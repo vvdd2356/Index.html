@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>성향 맞춤 룸메이트/팀원 매칭</title>
+    <style>
+        body { font-family: 'Pretendard', sans-serif; background-color: #f4f7f6; margin: 0; padding: 20px; }
+        .container { max-width: 600px; margin: 0 auto; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        h1 { text-align: center; color: #333; font-size: 24px; }
+        .toggle-container { display: flex; justify-content: center; margin-bottom: 20px; }
+        .toggle-btn { background: #eee; border: none; padding: 10px 20px; margin: 0 5px; border-radius: 20px; cursor: pointer; font-weight: bold; color: #777; transition: 0.3s; }
+        .toggle-btn.active { background: #4caf50; color: white; }
+        .card { border: 1px solid #ddd; border-radius: 10px; padding: 15px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; }
+        .card-info h2 { margin: 0 0 5px 0; font-size: 18px; color: #333; }
+        .tags { display: flex; gap: 5px; flex-wrap: wrap; }
+        .tag { background: #e3f2fd; color: #1e88e5; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; }
+        .score { font-size: 24px; font-weight: bold; color: #4caf50; }
+        .no-result { text-align: center; color: #888; padding: 20px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>내게 딱 맞는 파트너 찾기</h1>
+    
+    <div class="toggle-container">
+        <button class="toggle-btn active" onclick="switchTab('roommate')">룸메이트 찾기</button>
+        <button class="toggle-btn" onclick="switchTab('team')">팀원 찾기</button>
+    </div>
+
+    <div id="dashboard">
+        </div>
+</div>
+
+<script>
+    // 내 성향 데이터 (기준점)
+    const myProfile = {
+        name: "허정호",
+        isSmoker: false, // 비흡연자
+        answers: ["저녁형", "조용함", "매일청소", "외향적", "즉흥적"]
+    };
+
+    // 요청하신 이름으로 변경된 유저 데이터
+    const otherUsers = [
+        { name: "김민수", type: "roommate", isSmoker: false, answers: ["저녁형", "조용함", "매일청소", "내향적", "계획적"], tags: ["#저녁형", "#비흡연", "#깔끔함"] },
+        { name: "전지수", type: "roommate", isSmoker: true, answers: ["저녁형", "조용함", "매일청소", "외향적", "즉흥적"], tags: ["#저녁형", "#흡연"] }, // 흡연자라 제외됨
+        { name: "이우주", type: "roommate", isSmoker: false, answers: ["아침형", "활발함", "가끔청소", "외향적", "즉흥적"], tags: ["#아침형", "#비흡연", "#활동적"] },
+        { name: "남요셉", type: "team", isSmoker: false, answers: ["저녁형", "조용함", "매일청소", "외향적", "즉흥적"], tags: ["#저녁형", "#비흡연", "#소통원활"] },
+        { name: "이승영", type: "team", isSmoker: false, answers: ["아침형", "활발함", "가끔청소", "내향적", "계획적"], tags: ["#아침형", "#비흡연", "#계획적"] }
+    ];
+
+    // 성향 일치율 계산 알고리즘
+    function calculateMatchScore(myAnswers, otherAnswers) {
+        let matchCount = 0;
+        for (let i = 0; i < myAnswers.length; i++) {
+            if (myAnswers[i] === otherAnswers[i]) {
+                matchCount++;
+            }
+        }
+        return Math.round((matchCount / myAnswers.length) * 100);
+    }
+
+    let currentTab = 'roommate';
+
+    // 화면 업데이트 함수
+    function renderDashboard() {
+        const dashboard = document.getElementById('dashboard');
+        dashboard.innerHTML = '';
+
+        // 1. 탭 필터링 및 필수 조건 필터링 (비흡연자는 흡연자 무조건 제외)
+        let filteredUsers = otherUsers.filter(user => {
+            const isTypeMatch = user.type === currentTab;
+            const isSmokerSafe = !(myProfile.isSmoker === false && user.isSmoker === true);
+            return isTypeMatch && isSmokerSafe;
+        });
+
+        // 2. 점수 계산 및 객체에 추가
+        filteredUsers = filteredUsers.map(user => {
+            return {
+                ...user,
+                score: calculateMatchScore(myProfile.answers, user.answers)
+            };
+        });
+
+        // 3. 점수가 높은 순서대로 정렬
+        filteredUsers.sort((a, b) => b.score - a.score);
+
+        // 4. 화면에 렌더링
+        if (filteredUsers.length === 0) {
+            dashboard.innerHTML = '<div class="no-result">조건에 맞는 파트너가 없습니다.</div>';
+            return;
+        }
+
+        filteredUsers.forEach(user => {
+            const tagsHtml = user.tags.map(tag => `<span class="tag">${tag}</span>`).join('');
+            const card = document.createElement('div');
+            card.className = 'card';
+            card.innerHTML = `
+                <div class="card-info">
+                    <h2>${user.name}</h2>
+                    <div class="tags">${tagsHtml}</div>
+                </div>
+                <div class="score">${user.score}%</div>
+            `;
+            dashboard.appendChild(card);
+        });
+    }
+
+    // 탭 전환 함수
+    function switchTab(type) {
+        currentTab = type;
+        const buttons = document.querySelectorAll('.toggle-btn');
+        buttons[0].classList.toggle('active', type === 'roommate');
+        buttons[1].classList.toggle('active', type === 'team');
+        renderDashboard();
+    }
+
+    // 초기 화면 렌더링
+    renderDashboard();
+</script>
+
+</body>
+</html>
