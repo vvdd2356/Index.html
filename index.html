@@ -8,6 +8,15 @@
         body { font-family: 'Pretendard', sans-serif; background-color: #f4f7f6; margin: 0; padding: 20px; }
         .container { max-width: 600px; margin: 0 auto; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
         h1 { text-align: center; color: #333; font-size: 24px; }
+        
+        /* 설문조사 폼 스타일 */
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; font-weight: bold; margin-bottom: 5px; color: #555; }
+        .form-group select { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px; }
+        .submit-btn { display: block; width: 100%; background: #4caf50; color: white; border: none; padding: 15px; font-size: 18px; font-weight: bold; border-radius: 8px; cursor: pointer; margin-top: 20px; transition: 0.3s; }
+        .submit-btn:hover { background: #45a049; }
+
+        /* 대시보드 스타일 */
         .toggle-container { display: flex; justify-content: center; margin-bottom: 20px; }
         .toggle-btn { background: #eee; border: none; padding: 10px 20px; margin: 0 5px; border-radius: 20px; cursor: pointer; font-weight: bold; color: #777; transition: 0.3s; }
         .toggle-btn.active { background: #4caf50; color: white; }
@@ -17,12 +26,60 @@
         .tag { background: #e3f2fd; color: #1e88e5; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; }
         .score { font-size: 24px; font-weight: bold; color: #4caf50; }
         .no-result { text-align: center; color: #888; padding: 20px; }
+        .reset-btn { text-align: center; display: block; margin: 20px auto 0; background: none; border: 1px solid #ccc; padding: 8px 16px; border-radius: 20px; cursor: pointer; color: #555; }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <h1>내게 딱 맞는 파트너 찾기</h1>
+<div class="container" id="survey-section">
+    <h1>내 성향 선택하기</h1>
+    <div class="form-group">
+        <label>1. 흡연 여부</label>
+        <select id="q-smoker">
+            <option value="false">비흡연자</option>
+            <option value="true">흡연자</option>
+        </select>
+    </div>
+    <div class="form-group">
+        <label>2. 생활 패턴</label>
+        <select id="q-1">
+            <option value="저녁형">저녁형 (밤에 활동)</option>
+            <option value="아침형">아침형 (일찍 기상)</option>
+        </select>
+    </div>
+    <div class="form-group">
+        <label>3. 평소 성격</label>
+        <select id="q-2">
+            <option value="조용함">조용함</option>
+            <option value="활발함">활발함</option>
+        </select>
+    </div>
+    <div class="form-group">
+        <label>4. 청소 주기</label>
+        <select id="q-3">
+            <option value="매일청소">매일 청소하는 편</option>
+            <option value="가끔청소">가끔 청소하는 편</option>
+        </select>
+    </div>
+    <div class="form-group">
+        <label>5. 사람들과 어울릴 때</label>
+        <select id="q-4">
+            <option value="외향적">외향적 (사람들과 어울리기 좋아함)</option>
+            <option value="내향적">내향적 (혼자만의 시간이 중요함)</option>
+        </select>
+    </div>
+    <div class="form-group">
+        <label>6. 일 처리 방식</label>
+        <select id="q-5">
+            <option value="즉흥적">즉흥적 (유연하게 대처)</option>
+            <option value="계획적">계획적 (미리 계획 세우기)</option>
+        </select>
+    </div>
+    <button class="submit-btn" onclick="startMatching()">나와 맞는 파트너 찾기</button>
+</div>
+
+<div class="container" id="dashboard-section" style="display: none;">
+    <h1>내게 딱 맞는 파트너 결과</h1>
     
     <div class="toggle-container">
         <button class="toggle-btn active" onclick="switchTab('roommate')">룸메이트 찾기</button>
@@ -31,24 +88,54 @@
 
     <div id="dashboard">
         </div>
+    
+    <button class="reset-btn" onclick="resetSurvey()">다시 검사하기</button>
 </div>
 
 <script>
-    // 내 성향 데이터 (기준점)
-    const myProfile = {
-        name: "허정호",
-        isSmoker: false, // 비흡연자
-        answers: ["저녁형", "조용함", "매일청소", "외향적", "즉흥적"]
+    // 내 성향 데이터 (설문조사 후 덮어씌워짐)
+    let myProfile = {
+        name: "나(User)",
+        isSmoker: false,
+        answers: []
     };
 
-    // 요청하신 이름으로 변경된 유저 데이터
+    // 다른 유저들의 가상 데이터
     const otherUsers = [
         { name: "김민수", type: "roommate", isSmoker: false, answers: ["저녁형", "조용함", "매일청소", "내향적", "계획적"], tags: ["#저녁형", "#비흡연", "#깔끔함"] },
-        { name: "전지수", type: "roommate", isSmoker: true, answers: ["저녁형", "조용함", "매일청소", "외향적", "즉흥적"], tags: ["#저녁형", "#흡연"] }, // 흡연자라 제외됨
+        { name: "전지수", type: "roommate", isSmoker: true, answers: ["저녁형", "조용함", "매일청소", "외향적", "즉흥적"], tags: ["#저녁형", "#흡연"] },
         { name: "이우주", type: "roommate", isSmoker: false, answers: ["아침형", "활발함", "가끔청소", "외향적", "즉흥적"], tags: ["#아침형", "#비흡연", "#활동적"] },
         { name: "남요셉", type: "team", isSmoker: false, answers: ["저녁형", "조용함", "매일청소", "외향적", "즉흥적"], tags: ["#저녁형", "#비흡연", "#소통원활"] },
         { name: "이승영", type: "team", isSmoker: false, answers: ["아침형", "활발함", "가끔청소", "내향적", "계획적"], tags: ["#아침형", "#비흡연", "#계획적"] }
     ];
+
+    let currentTab = 'roommate';
+
+    // 매칭 시작 (버튼 클릭 시 실행)
+    function startMatching() {
+        // 선택한 값 가져오기
+        myProfile.isSmoker = document.getElementById('q-smoker').value === 'true';
+        myProfile.answers = [
+            document.getElementById('q-1').value,
+            document.getElementById('q-2').value,
+            document.getElementById('q-3').value,
+            document.getElementById('q-4').value,
+            document.getElementById('q-5').value
+        ];
+
+        // 화면 전환 (설문조사 숨기고, 대시보드 보이기)
+        document.getElementById('survey-section').style.display = 'none';
+        document.getElementById('dashboard-section').style.display = 'block';
+
+        // 탭 초기화 및 렌더링
+        switchTab('roommate');
+    }
+
+    // 다시 검사하기
+    function resetSurvey() {
+        document.getElementById('dashboard-section').style.display = 'none';
+        document.getElementById('survey-section').style.display = 'block';
+    }
 
     // 성향 일치율 계산 알고리즘
     function calculateMatchScore(myAnswers, otherAnswers) {
@@ -61,32 +148,24 @@
         return Math.round((matchCount / myAnswers.length) * 100);
     }
 
-    let currentTab = 'roommate';
-
     // 화면 업데이트 함수
     function renderDashboard() {
         const dashboard = document.getElementById('dashboard');
         dashboard.innerHTML = '';
 
-        // 1. 탭 필터링 및 필수 조건 필터링 (비흡연자는 흡연자 무조건 제외)
+        // 필터링 및 점수 계산
         let filteredUsers = otherUsers.filter(user => {
             const isTypeMatch = user.type === currentTab;
             const isSmokerSafe = !(myProfile.isSmoker === false && user.isSmoker === true);
             return isTypeMatch && isSmokerSafe;
         });
 
-        // 2. 점수 계산 및 객체에 추가
         filteredUsers = filteredUsers.map(user => {
-            return {
-                ...user,
-                score: calculateMatchScore(myProfile.answers, user.answers)
-            };
+            return { ...user, score: calculateMatchScore(myProfile.answers, user.answers) };
         });
 
-        // 3. 점수가 높은 순서대로 정렬
         filteredUsers.sort((a, b) => b.score - a.score);
 
-        // 4. 화면에 렌더링
         if (filteredUsers.length === 0) {
             dashboard.innerHTML = '<div class="no-result">조건에 맞는 파트너가 없습니다.</div>';
             return;
@@ -115,9 +194,6 @@
         buttons[1].classList.toggle('active', type === 'team');
         renderDashboard();
     }
-
-    // 초기 화면 렌더링
-    renderDashboard();
 </script>
 
 </body>
